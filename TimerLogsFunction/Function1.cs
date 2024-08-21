@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Resources;
 using Azure.ResourceManager.Monitor;
+using Azure.ResourceManager.OperationalInsights;
+using Azure.Core;
 
 
 namespace TimerLogsFunction
@@ -33,9 +35,11 @@ namespace TimerLogsFunction
                 var subscriptionResources = armclient.GetSubscriptions();
                 foreach (var subscriptionResource in subscriptionResources)
                 {
-                    foreach (var workspace in subscriptionResource.GetMonitorWorkspaceResources().ToList())
+                    foreach (var workspace in subscriptionResource.GetOperationalInsightsWorkspaces().ToList())
                     {
-                        QueryWorkspaces(workspace.Id);
+                        var wid = ResourceIdentifier.Parse(workspace.Data.Id).SubscriptionId;
+                        QueryWorkspaces(wid);
+
                     }
                 }
             }
