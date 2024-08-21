@@ -36,9 +36,8 @@ namespace TimerLogsFunction
                 foreach (var subscriptionResource in subscriptionResources)
                 {
                     foreach (var workspace in subscriptionResource.GetOperationalInsightsWorkspaces().ToList())
-                    {
-                        var wid = ResourceIdentifier.Parse(workspace.Data.Id).SubscriptionId;
-                        QueryWorkspaces(wid);
+                    {                        
+                        QueryWorkspaces(workspace.Data.CustomerId.ToString());
 
                     }
                 }
