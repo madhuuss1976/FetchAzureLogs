@@ -50,22 +50,6 @@ namespace TimerLogsFunction
             }
         }
 
-        void SendEmail()
-        {
-            
-            // This code retrieves your connection string from an environment variable.
-            string connectionString = Environment.GetEnvironmentVariable("COMMUNICATION_SERVICES_CONNECTION_STRING");
-            var emailClient = new EmailClient(connectionString);
-
-            EmailSendOperation emailSendOperation = emailClient.Send(
-                WaitUntil.Completed,
-                senderAddress: "DoNotReply@<from_domain>",
-                recipientAddress: "<to_email>",
-                subject: "Test Email",
-                htmlContent: "<html><h1>Hello world via email.</h1l></html>",
-                plainTextContent: "Hello world via email.");
-
-        }
 
         void logqueryAsync(string resourceId, string tableName, string query)
         {
@@ -78,8 +62,24 @@ namespace TimerLogsFunction
                 foreach (LogsTableColumn columns in resultTable.Columns)
                 {
                     Console.WriteLine($"{columns.Name} -  {row[columns.Name]}");
+                    //SendEmail();
                 }
             }
+        }
+        void SendEmail()
+        {
+            // This code retrieves your connection string from an environment variable.
+            string connectionString = Environment.GetEnvironmentVariable("COMMUNICATION_SERVICES_CONNECTION_STRING");
+            var emailClient = new EmailClient(connectionString);
+
+            EmailSendOperation emailSendOperation = emailClient.Send(
+                WaitUntil.Completed,
+                senderAddress: "DoNotReply@<from_domain>",
+                recipientAddress: "<to_email>",
+                subject: "Test Email",
+                htmlContent: "<html><h1>Hello world via email.</h1l></html>",
+                plainTextContent: "Hello world via email.");
+
         }
     }
 }
