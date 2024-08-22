@@ -2,6 +2,7 @@
     "IsEncrypted": false,
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"    
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "COMMUNICATION_SERVICES_CONNECTION_STRING": "endpoint=https://madhuussemail.india.communication.azure.com/;accesskey=7ooAFkYFH7wunZDOGmVPAXPspEGJXwkpB6cp9pwR9sK1D6AoChU9JQQJ99AHACULyCpJ5RdsAAAAAZCSb85K"
   }
 }

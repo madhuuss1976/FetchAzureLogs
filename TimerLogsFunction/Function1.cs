@@ -1,23 +1,20 @@
 using Azure;
+using Azure.Communication.Email;
 using Azure.Identity;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Azure.ResourceManager;
-using Azure.ResourceManager.Resources;
-using Azure.ResourceManager.Monitor;
 using Azure.ResourceManager.ApplicationInsights;
 using Azure.Core;
-using Microsoft.Extensions.Logging.ApplicationInsights;
-using Azure.ResourceManager.ApplicationInsights.Mocking;
-using Azure.ResourceManager.OperationalInsights;
 
 namespace TimerLogsFunction
 {
     public class TimerLogsFunction
     {
         private readonly ILogger _logger;
+        DefaultAzureCredential _credential;
 
         public TimerLogsFunction(ILoggerFactory loggerFactory)
         {
@@ -27,25 +24,23 @@ namespace TimerLogsFunction
         [Function("TimerLogsFunction")]
         public void Run([TimerTrigger("0 */1 * * * *")] TimerInfo myTimer)
         {
-            logqueryAsync();
+            _credential = new DefaultAzureCredential();
+            FetchLogs();
         }
         void FetchLogs()
         {
             try
             {
-                
-                ArmClient armclient = new ArmClient(new DefaultAzureCredential());
-                
-                var subscriptionResources = armclient.GetSubscriptions();
-                
-                
+                string tableName = "traces";
+                string query = "where severityLevel between (1 ..4 )";
+
+                ArmClient armclient = new ArmClient(_credential);
+                var subscriptionResources = armclient.GetSubscriptions();                
                 foreach (var subscriptionResource in subscriptionResources)
                 {
                     foreach (var applicationInsight in subscriptionResource.GetApplicationInsightsComponents().ToList())
                     {
-                        Console.WriteLine(applicationInsight.Data.AppId);
-                        
-                        
+                        logqueryAsync(applicationInsight.Data.Id, tableName, query);
                     }
                 }
             }
@@ -55,52 +50,36 @@ namespace TimerLogsFunction
             }
         }
 
-        void logqueryAsync()
+        void SendEmail()
         {
-            var client = new LogsQueryClient(new DefaultAzureCredential());
+            
+            // This code retrieves your connection string from an environment variable.
+            string connectionString = Environment.GetEnvironmentVariable("COMMUNICATION_SERVICES_CONNECTION_STRING");
+            var emailClient = new EmailClient(connectionString);
 
-            string resourceId = "/subscriptions/d85e5f9e-6cdc-4347-8923-829300a15ec9/resourceGroups/Test2/providers/microsoft.insights/components/LoggerFunc";
-            string tableName = "traces";
-            Response<LogsQueryResult> results = client.QueryResource(
-                new ResourceIdentifier(resourceId),
-                $"traces | where SeverityLevel between (1 ..4 )  | top 1 by TimeGenerated",
-                            new QueryTimeRange(TimeSpan.FromMinutes(30)));    
+            EmailSendOperation emailSendOperation = emailClient.Send(
+                WaitUntil.Completed,
+                senderAddress: "DoNotReply@<from_domain>",
+                recipientAddress: "<to_email>",
+                subject: "Test Email",
+                htmlContent: "<html><h1>Hello world via email.</h1l></html>",
+                plainTextContent: "Hello world via email.");
 
-            LogsTable resultTable = results.Value.Table;
-            foreach (LogsTableRow row in resultTable.Rows)
-            {
-                Console.WriteLine($"{row["OperationName"]} {row["ResourceGroup"]}");
-            }
-
-            foreach (LogsTableColumn columns in resultTable.Columns)
-            {
-                Console.WriteLine("Name: " + columns.Name + " Type: " + columns.Type);
-            }
         }
 
-    //    void QueryWorkspaces(ApplicationInsightsComponentResource applicationInsight)
-    //    {
-            
-    //        var queryClient = new LogsQueryClient(new DefaultAzureCredential());
-
-    //        queryClient.QueryResource(new DefaultAzureCredential());
-
-    //        Response<LogsQueryResult> result = client.QueryWorkspace(
-    //            workspaceId,
-    //            "AppTraces | where SeverityLevel between (1 ..4 )  | top 1 by TimeGenerated",
-    //            new QueryTimeRange(TimeSpan.FromMinutes(30)));            
-
-    //        LogsTable table = result.Value.Table;
-    //        foreach (var row in table.Rows)
-    //        {
-    //            Console.WriteLine(row.ToString());
-    //            table.Columns.ToList().ForEach(x =>
-    //            {
-    //                Console.WriteLine($"{x.Name} - {x.Type} {row[x.Name]}");
-    //            });
-    //            _logger.LogInformation($"{row["OperationName"]} {row["SeverityLevel"]} {row["_ResourceId"]}");
-    //        }
-    //    }
+        void logqueryAsync(string resourceId, string tableName, string query)
+        {
+            var client = new LogsQueryClient(_credential);
+            Response<LogsQueryResult> results = client.QueryResource(new ResourceIdentifier(resourceId), $"{tableName} | {query}",
+                        new QueryTimeRange(TimeSpan.FromMinutes(30)));            
+            var resultTable = results.Value.Table;
+            foreach (LogsTableRow row in resultTable.Rows.Take(10))
+            {
+                foreach (LogsTableColumn columns in resultTable.Columns)
+                {
+                    Console.WriteLine($"{columns.Name} -  {row[columns.Name]}");
+                }
+            }
+        }
     }
 }
-
